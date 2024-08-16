@@ -5,24 +5,153 @@
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <unistd.h>
-void send_avframe_to_yolo8(int yolo8, AVFrame *frame)
+#include <libavfilter/avfilter.h>
+
+void save_frame_as_bmp(AVFrame *frame, const char *filename)
 {
-    printf("send_avframe_to_yolo8\n");
+    FILE *f;
+    int width = 640;
+    int height = 640;
+    int row_size = (width * 3 + 3) & ~3; // Row size in bytes, aligned to 4 bytes
+    int data_size = row_size * height;
+    int file_size = 54 + data_size; // 54 bytes for BMP header and DIB header
+
+    uint8_t bmp_header[54] = {
+        'B', 'M',           // Signature
+        0, 0, 0, 0,         // Image file size
+        0, 0,               // Reserved1
+        0, 0,               // Reserved2
+        54, 0, 0, 0,        // Offset to start of image data
+        40, 0, 0, 0,        // Header size
+        width, 0, 0, 0,     // Image width
+        height, 0, 0, 0,    // Image height
+        1, 0,               // Number of color planes
+        24, 0,              // Bits per pixel
+        0, 0, 0, 0,         // Compression
+        data_size, 0, 0, 0, // Image data size
+        0x13, 0x0B, 0, 0,   // Horizontal resolution (2835 pixels/meter)
+        0x13, 0x0B, 0, 0,   // Vertical resolution (2835 pixels/meter)
+        0, 0, 0, 0,         // Number of colors
+        0, 0, 0, 0          // Important colors
+    };
+
+    // Set file size and image offset
+    bmp_header[2] = (file_size & 0xFF);
+    bmp_header[3] = ((file_size >> 8) & 0xFF);
+    bmp_header[4] = ((file_size >> 16) & 0xFF);
+    bmp_header[5] = ((file_size >> 24) & 0xFF);
+
+    bmp_header[10] = (54 & 0xFF);
+    bmp_header[11] = ((54 >> 8) & 0xFF);
+    bmp_header[12] = ((54 >> 16) & 0xFF);
+    bmp_header[13] = ((54 >> 24) & 0xFF);
+
+    bmp_header[18] = (width & 0xFF);
+    bmp_header[19] = ((width >> 8) & 0xFF);
+    bmp_header[20] = ((width >> 16) & 0xFF);
+    bmp_header[21] = ((width >> 24) & 0xFF);
+
+    bmp_header[22] = (height & 0xFF);
+    bmp_header[23] = ((height >> 8) & 0xFF);
+    bmp_header[24] = ((height >> 16) & 0xFF);
+    bmp_header[25] = ((height >> 24) & 0xFF);
+
+    bmp_header[34] = (data_size & 0xFF);
+    bmp_header[35] = ((data_size >> 8) & 0xFF);
+    bmp_header[36] = ((data_size >> 16) & 0xFF);
+    bmp_header[37] = ((data_size >> 24) & 0xFF);
+
+    f = fopen(filename, "wb");
+    if (!f)
+    {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        return;
+    }
+
+    fwrite(bmp_header, 1, 54, f);
+
+    uint8_t *row = (uint8_t *)malloc(row_size);
+    if (!row)
+    {
+        fprintf(stderr, "Memory allocation error\n");
+        fclose(f);
+        return;
+    }
+
+    for (int i = height - 1; i >= 0; i--)
+    {
+        memcpy(row, frame->data[0] + i * frame->linesize[0], width * 3);
+        fwrite(row, 1, row_size, f);
+    }
+
+    free(row);
+    fclose(f);
 }
-void receive_result_from_yolo8(int yolo8, void *p)
+
+// Helper function to draw a rectangle on the frame
+void draw_rectangle(AVFrame *frame, int x, int y, int w, int h, int thickness)
 {
-    printf("receive_result_from_yolo8\n");
+    int width = frame->width;
+    int height = frame->height;
+    int stride = frame->linesize[0];
+    uint8_t *data = frame->data[0];
+
+    // Ensure thickness is not too large
+    thickness = (thickness > w) ? w : thickness;
+    thickness = (thickness > h) ? h : thickness;
+
+    for (int t = 0; t < thickness; t++)
+    {
+        // Draw horizontal lines
+        for (int i = x - t; i < x + w + t; i++)
+        {
+            if (i >= 0 && i < width)
+            {
+                if (y - t >= 0)
+                    data[i + (y - t) * stride] = 0;
+                if (y + h + t < height)
+                    data[i + (y + h + t) * stride] = 0;
+            }
+        }
+
+        // Draw vertical lines
+        for (int i = y - t; i < y + h + t; i++)
+        {
+            if (i >= 0 && i < height)
+            {
+                if (x - t >= 0)
+                    data[(x - t) + i * stride] = 255;
+                if (x + w + t < width)
+                    data[(x + w + t) + i * stride] = 255;
+            }
+        }
+    }
+}
+
+int add_rectangle_to_frame(AVFrame *frame, int x, int y, int w, int h, int thickness)
+{
+    if (!frame)
+    {
+        fprintf(stderr, "Invalid frame\n");
+        return -1;
+    }
+    // Draw rectangle
+    draw_rectangle(frame, x, y, w, h, thickness);
+
+    return 0;
 }
 int main(int argc, char *argv[])
 {
     const char *input_url = "rtsp://192.168.10.244:554/av0_0";
-    const char *output_url = "rtmp://127.0.0.1:1935/live/test001";
+    const char *output_url = "rtmp://192.168.10.163:1935/live/test002";
 
     AVFormatContext *input_fmt_ctx = NULL, *output_fmt_ctx = NULL;
     AVCodecContext *input_codec_ctx = NULL, *output_codec_ctx = NULL;
     AVStream *video_stream = NULL;
     AVPacket packet;
     AVFrame *frame = NULL;
+    AVFrame *rgb_frame = NULL;
+
     int video_stream_index = -1;
     int ret;
 
@@ -101,6 +230,7 @@ int main(int argc, char *argv[])
     }
 
     // Find and open the encoder for the output stream
+
     const AVCodec *output_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
     if (!output_codec)
     {
@@ -162,6 +292,19 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not allocate frame\n");
         return 1;
     }
+    rgb_frame = av_frame_alloc();
+    if (!rgb_frame)
+    {
+        fprintf(stderr, "Could not allocate frame\n");
+        return 1;
+    }
+    struct SwsContext *sws_ctx = sws_getContext(
+        input_codec_ctx->width, input_codec_ctx->height, input_codec_ctx->pix_fmt,
+        640, 640, AV_PIX_FMT_RGB24,
+        SWS_BILINEAR, NULL, NULL, NULL);
+    // int num_bytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1); //
+    uint8_t *rgb_buffer = (uint8_t *)av_malloc(1228800);
+    av_image_fill_arrays(rgb_frame->data, rgb_frame->linesize, rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
 
     while (av_read_frame(input_fmt_ctx, &packet) >= 0)
     {
@@ -175,16 +318,25 @@ int main(int argc, char *argv[])
             }
             while (avcodec_receive_frame(input_codec_ctx, frame) >= 0)
             {
-                frame->pts = frame->best_effort_timestamp;
+                //-------------------------------------------------------------
+                // 格式转换成RGB，640*640
+                //-------------------------------------------------------------
+                sws_scale(sws_ctx, (const uint8_t *const *)frame->data, frame->linesize, 0,
+                          input_codec_ctx->height, rgb_frame->data, rgb_frame->linesize);
+                // printf("write_bmp rgb_frame.bmp\n");
+                // save_frame_as_bmp(rgb_frame, "./rgb_frame.bmp");
+                // frame->pts = frame->best_effort_timestamp;
                 if (avcodec_send_frame(output_codec_ctx, frame) < 0)
                 {
                     fprintf(stderr, "Error sending frame to encoder\n");
                     continue;
                 }
                 //
-                send_avframe_to_yolo8(0, frame);
-                receive_result_from_yolo8(0, NULL);
+                // send_avframe_to_yolo8(0, frame);
+                // receive_result_from_yolo8(0, NULL);
                 //
+                add_rectangle_to_frame(frame, 10, 10, 1000, 200, 8);
+
                 while (avcodec_receive_packet(output_codec_ctx, &packet) >= 0)
                 {
                     AVStream *in_stream = input_fmt_ctx->streams[packet.stream_index];
@@ -192,12 +344,14 @@ int main(int argc, char *argv[])
 
                     packet.pts = av_rescale_q(packet.pts, in_stream->time_base, out_stream->time_base);
                     packet.dts = packet.pts;
-                    packet.duration = packet.duration;
+                    if (packet.pts < packet.dts)
+                    {
+                        continue;
+                    }
                     if (av_interleaved_write_frame(output_fmt_ctx, &packet) < 0)
                     {
                         fprintf(stderr, "Error writing packet to output file\n");
                     }
-
                     av_packet_unref(&packet);
                 }
             }
@@ -207,6 +361,7 @@ int main(int argc, char *argv[])
 
     av_write_trailer(output_fmt_ctx);
     av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
     avcodec_free_context(&input_codec_ctx);
     avcodec_free_context(&output_codec_ctx);
     avformat_close_input(&input_fmt_ctx);
@@ -215,6 +370,6 @@ int main(int argc, char *argv[])
         avio_closep(&output_fmt_ctx->pb);
     }
     avformat_free_context(output_fmt_ctx);
-
+    free(rgb_buffer);
     return 0;
 }

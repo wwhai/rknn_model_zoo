@@ -217,15 +217,14 @@ int main(int argc, char *argv[])
                 //-------------------------------------------------------------
                 // 格式转换成RGB，640*640
                 //-------------------------------------------------------------
-                sws_scale(sws_ctx, (const uint8_t *const *)frame->data,
-                          frame->linesize, 0, input_codec_ctx->height,
-                          rgb_frame->data, rgb_frame->linesize);
+                sws_scale(sws_ctx, (const uint8_t *const *)frame->data, frame->linesize, 0,
+                          input_codec_ctx->height, rgb_frame->data, rgb_frame->linesize);
                 image_buffer_t src_image;
                 memset(&src_image, 0, sizeof(image_buffer_t));
                 src_image.width = 640;
                 src_image.height = 640;
-                src_image.width_stride = 0;
-                src_image.height_stride = 0;
+                src_image.width_stride = rgb_frame->linesize[0];
+                src_image.height_stride = rgb_frame->linesize[0];
                 src_image.size = sizeof(num_bytes);
                 src_image.virt_addr = (unsigned char *)rgb_frame->data[0];
                 src_image.format = IMAGE_FORMAT_RGB888;
