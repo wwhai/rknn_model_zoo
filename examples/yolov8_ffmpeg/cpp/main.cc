@@ -24,7 +24,6 @@
 #include "image_utils.h"
 #include "file_utils.h"
 #include "image_drawing.h"
-#include <time.h>
 /*-------------------------------------------
                   Main Function
 -------------------------------------------*/
@@ -63,13 +62,7 @@ int main(int argc, char **argv)
     }
 
     object_detect_result_list od_results;
-
-    clock_t start = clock();
     ret = inference_yolov8_model(&rknn_app_ctx, &src_image, &od_results);
-    clock_t end = clock();
-    double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;
-    printf("函数执行时间: %f 秒\n", elapsed_time);
-
     if (ret != 0)
     {
         printf("init_yolov8_model fail! ret=%d\n", ret);

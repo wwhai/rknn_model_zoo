@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(rknn_yolov8_demo)
+project(rknn_yolov8_ffmpeg_demo)
 
 if (ENABLE_ASAN)
 	message(STATUS "BUILD WITH ADDRESS SANITIZER")
@@ -39,7 +39,7 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     imageutils
     fileutils
-    imagedrawing    
+    imagedrawing
     ${LIBRKNNRT}
     dl
 )
