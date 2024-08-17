@@ -96,14 +96,11 @@ int main(int argc, char *argv[])
     AVFormatContext *input_fmt_ctx = NULL, *output_fmt_ctx = NULL;
     AVCodecContext *input_codec_ctx = NULL, *output_codec_ctx = NULL;
     AVStream *video_stream = NULL;
-    AVPacket packet;
     AVFrame *frame = NULL;
-    AVFrame *rgb_frame = NULL;
-
+    AVFrame *rgb_640x640_frame = NULL;
+    const AVCodec *input_codec = NULL;
+    const AVCodec *output_codec = NULL;
     int video_stream_index = -1;
-    int ret;
-
-    // Open the input RTSP stream
     if (avformat_open_input(&input_fmt_ctx, input_url, NULL, NULL) < 0)
     {
         fprintf(stderr, "Could not open input stream\n");
@@ -130,56 +127,41 @@ int main(int argc, char *argv[])
         fprintf(stderr, "No video stream found\n");
         return 1;
     }
-
-    // Find the decoder for the video stream
     AVCodecParameters *codecpar = input_fmt_ctx->streams[video_stream_index]->codecpar;
-    const AVCodec *input_codec = avcodec_find_decoder(codecpar->codec_id);
+    input_codec = avcodec_find_decoder(codecpar->codec_id);
     if (!input_codec)
     {
         fprintf(stderr, "Codec not found\n");
         return 1;
     }
-
-    // Allocate a codec context for the decoder
     input_codec_ctx = avcodec_alloc_context3(input_codec);
     if (!input_codec_ctx)
     {
         fprintf(stderr, "Could not allocate video codec context\n");
         return 1;
     }
-
-    // Copy codec parameters from input stream to codec context
     if (avcodec_parameters_to_context(input_codec_ctx, codecpar) < 0)
     {
         fprintf(stderr, "Could not copy codec parameters to context\n");
         return 1;
     }
-
-    // Open the codec
     if (avcodec_open2(input_codec_ctx, input_codec, NULL) < 0)
     {
         fprintf(stderr, "Could not open codec\n");
         return 1;
     }
-
-    // Create the output format context for RTMP
     if (avformat_alloc_output_context2(&output_fmt_ctx, NULL, "flv", output_url) < 0)
     {
         fprintf(stderr, "Could not create output context\n");
         return 1;
     }
-
-    // Create a new video stream in the output context
     video_stream = avformat_new_stream(output_fmt_ctx, NULL);
     if (!video_stream)
     {
         fprintf(stderr, "Could not create new stream\n");
         return 1;
     }
-
-    // Find and open the encoder for the output stream
-
-    const AVCodec *output_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+    output_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
     if (!output_codec)
     {
         fprintf(stderr, "Encoder not found\n");
@@ -217,14 +199,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Open the output file
-    if (!(output_fmt_ctx->oformat->flags & AVFMT_NOFILE))
+    if (avio_open(&output_fmt_ctx->pb, output_url, AVIO_FLAG_WRITE) < 0)
     {
-        if (avio_open(&output_fmt_ctx->pb, output_url, AVIO_FLAG_WRITE) < 0)
-        {
-            fprintf(stderr, "Could not open output file\n");
-            return 1;
-        }
+        fprintf(stderr, "Could not open output file\n");
+        return 1;
     }
 
     // Write the stream header
@@ -240,8 +218,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not allocate frame\n");
         return 1;
     }
-    rgb_frame = av_frame_alloc();
-    if (!rgb_frame)
+    rgb_640x640_frame = av_frame_alloc();
+    if (!rgb_640x640_frame)
     {
         fprintf(stderr, "Could not allocate frame\n");
         return 1;
@@ -250,10 +228,10 @@ int main(int argc, char *argv[])
         input_codec_ctx->width, input_codec_ctx->height, input_codec_ctx->pix_fmt,
         640, 640, AV_PIX_FMT_RGB24,
         SWS_BILINEAR, NULL, NULL, NULL);
-    // int num_bytes = av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1); //
-    uint8_t *rgb_buffer = (uint8_t *)av_malloc(1228800);
-    av_image_fill_arrays(rgb_frame->data, rgb_frame->linesize, rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
-
+    uint8_t *rgb_buffer = (uint8_t *)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1));
+    av_image_fill_arrays(rgb_640x640_frame->data, rgb_640x640_frame->linesize, rgb_buffer,
+                         AV_PIX_FMT_RGB24, 640, 640, 1);
+    AVPacket packet;
     while (av_read_frame(input_fmt_ctx, &packet) >= 0)
     {
         if (packet.stream_index == video_stream_index)
@@ -266,14 +244,9 @@ int main(int argc, char *argv[])
             }
             while (avcodec_receive_frame(input_codec_ctx, frame) >= 0)
             {
-                //-------------------------------------------------------------
-                // 格式转换成RGB，640*640
-                //-------------------------------------------------------------
                 sws_scale(sws_ctx, (const uint8_t *const *)frame->data, frame->linesize, 0,
-                          input_codec_ctx->height, rgb_frame->data, rgb_frame->linesize);
-                // printf("write_bmp rgb_frame.bmp\n");
-                // save_frame_as_bmp(rgb_frame, "./rgb_frame.bmp");
-                // frame->pts = frame->best_effort_timestamp;
+                          input_codec_ctx->height, rgb_640x640_frame->data, rgb_640x640_frame->linesize);
+                // save_frame_as_bmp(rgb_640x640_frame, "./rgb_640x640_frame.bmp");
                 if (avcodec_send_frame(output_codec_ctx, frame) < 0)
                 {
                     fprintf(stderr, "Error sending frame to encoder\n");
@@ -307,7 +280,7 @@ int main(int argc, char *argv[])
 
     av_write_trailer(output_fmt_ctx);
     av_frame_free(&frame);
-    av_frame_free(&rgb_frame);
+    av_frame_free(&rgb_640x640_frame);
     avcodec_free_context(&input_codec_ctx);
     avcodec_free_context(&output_codec_ctx);
     avformat_close_input(&input_fmt_ctx);
