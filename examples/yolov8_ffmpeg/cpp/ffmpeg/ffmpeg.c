@@ -88,58 +88,6 @@ void save_frame_as_bmp(AVFrame *frame, const char *filename)
     fclose(f);
 }
 
-// Helper function to draw a rectangle on the frame
-void draw_rectangle(AVFrame *frame, int x, int y, int w, int h, int thickness)
-{
-    int width = frame->width;
-    int height = frame->height;
-    int stride = frame->linesize[0];
-    uint8_t *data = frame->data[0];
-
-    // Ensure thickness is not too large
-    thickness = (thickness > w) ? w : thickness;
-    thickness = (thickness > h) ? h : thickness;
-
-    for (int t = 0; t < thickness; t++)
-    {
-        // Draw horizontal lines
-        for (int i = x - t; i < x + w + t; i++)
-        {
-            if (i >= 0 && i < width)
-            {
-                if (y - t >= 0)
-                    data[i + (y - t) * stride] = 0;
-                if (y + h + t < height)
-                    data[i + (y + h + t) * stride] = 0;
-            }
-        }
-
-        // Draw vertical lines
-        for (int i = y - t; i < y + h + t; i++)
-        {
-            if (i >= 0 && i < height)
-            {
-                if (x - t >= 0)
-                    data[(x - t) + i * stride] = 255;
-                if (x + w + t < width)
-                    data[(x + w + t) + i * stride] = 255;
-            }
-        }
-    }
-}
-
-int add_rectangle_to_frame(AVFrame *frame, int x, int y, int w, int h, int thickness)
-{
-    if (!frame)
-    {
-        fprintf(stderr, "Invalid frame\n");
-        return -1;
-    }
-    // Draw rectangle
-    draw_rectangle(frame, x, y, w, h, thickness);
-
-    return 0;
-}
 int main(int argc, char *argv[])
 {
     const char *input_url = "rtsp://192.168.10.244:554/av0_0";
@@ -335,8 +283,6 @@ int main(int argc, char *argv[])
                 // send_avframe_to_yolo8(0, frame);
                 // receive_result_from_yolo8(0, NULL);
                 //
-                add_rectangle_to_frame(frame, 10, 10, 1000, 200, 8);
-
                 while (avcodec_receive_packet(output_codec_ctx, &packet) >= 0)
                 {
                     AVStream *in_stream = input_fmt_ctx->streams[packet.stream_index];
