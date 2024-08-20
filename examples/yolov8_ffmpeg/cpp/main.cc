@@ -26,7 +26,6 @@
 #endif
 
 #include <signal.h>
-#include "utils.c"
 #include "player.c"
 
 // 信号处理函数

@@ -24,7 +24,7 @@
 #include <set>
 #include <vector>
 #define LABEL_NALE_TXT_PATH "./model/coco_80_labels_list.txt"
-
+const char *__null_label = "null";
 static char *labels[OBJ_CLASS_NUM];
 
 inline static int clamp(float val, int min, int max) { return val > min ? (val < max ? val : max) : min; }
@@ -697,15 +697,15 @@ char *coco_cls_to_name(int cls_id)
 
     if (cls_id >= OBJ_CLASS_NUM)
     {
-        return "null";
+        goto out;
     }
 
     if (labels[cls_id])
     {
         return labels[cls_id];
     }
-
-    return "null";
+out:
+    return (char *)__null_label;
 }
 
 void deinit_post_process()

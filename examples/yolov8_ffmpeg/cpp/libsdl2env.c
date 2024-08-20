@@ -14,17 +14,22 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#ifndef SDL2ENV
 #define SDL2ENV
-#ifdef SDL2ENV
+extern "C"
+{
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <libavformat/avformat.h>
+}
+#include "types.c"
+#include "queue.c"
+
 #include "yolov8.h"
 #include "image_utils.h"
 #include "file_utils.h"
-#include <libavformat/avformat.h>
-#include "types.c"
-#include "queue.c"
+#include "image_drawing.h"
 
 typedef struct TLibSDL2Env
 {
@@ -32,9 +37,7 @@ typedef struct TLibSDL2Env
     SDL_Renderer *mainRenderer;
     SDL_Texture *mainTexture;
     TTF_Font *mainFont;
-    rknn_app_context_t rknn_app_ctx;
 } TLibSDL2Env;
-
 void DestroySDL2Env(TLibSDL2Env *Env);
 int SDLDrawText(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, int y);
 void SDLDrawRect(SDL_Renderer *renderer, int x, int y, int width, int height);
@@ -115,17 +118,6 @@ TLibSDL2Env *NewLibSdl2Env()
 }
 int InitTLibSDL2Env(TLibSDL2Env *Env, int w, int h)
 {
-    int ret;
-    memset(&Env->rknn_app_ctx, 0, sizeof(rknn_app_context_t));
-    init_post_process();
-    ret = init_yolov8_model("./model/yolo8n.rknn", &rknn_app_ctx);
-    if (ret != 0)
-    {
-        deinit_post_process();
-        release_yolov8_model(&Env->rknn_app_ctx);
-        printf("init_yolov8_model fail! ret=%d model_path=%s\n", ret, model_path);
-        return -1;
-    }
     Env->mainWindow = SDL_CreateWindow("FSY PLAYER",
                                        SDL_WINDOWPOS_CENTERED,
                                        SDL_WINDOWPOS_CENTERED,
@@ -225,8 +217,6 @@ void DestroySDL2Env(TLibSDL2Env *Env)
     SDL_DestroyWindow(Env->mainWindow);
     TTF_Quit();
     SDL_Quit();
-    deinit_post_process();
-    release_yolov8_model(&Env->rknn_app_ctx);
 }
 
 #endif
