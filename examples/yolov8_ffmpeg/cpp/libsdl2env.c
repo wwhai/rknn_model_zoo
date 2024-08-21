@@ -24,12 +24,15 @@
 #include "queue.c"
 #include <pthread.h>
 
+
 typedef struct TLibSDL2Env
 {
     SDL_Window *mainWindow;
     SDL_Renderer *mainRenderer;
     SDL_Texture *mainTexture;
     TTF_Font *mainFont;
+
+
 } TLibSDL2Env;
 void DestroySDL2Env(TLibSDL2Env *Env);
 int SDLDrawText(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, int y);
@@ -125,6 +128,7 @@ void TLibSDL2EnvDisplayFrame(TLibSDL2Env *Env, AVFrame *sdl_frame)
 
 TLibSDL2Env *NewLibSdl2Env()
 {
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO |
                  SDL_INIT_TIMER | SDL_INIT_EVENTS))
     {
@@ -138,6 +142,7 @@ TLibSDL2Env *NewLibSdl2Env()
         return NULL;
     }
     TNew(TLibSDL2Env, Sdl2Env);
+
     return Sdl2Env;
 }
 int InitTLibSDL2Env(TLibSDL2Env *Env, int w, int h)

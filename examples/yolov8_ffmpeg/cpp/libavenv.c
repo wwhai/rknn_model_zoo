@@ -24,6 +24,12 @@
 #include <libavutil/log.h>
 #include <stdlib.h>
 #include <pthread.h>
+
+#include "yolov8.h"
+#include "image_utils.h"
+#include "file_utils.h"
+#include "image_drawing.h"
+
 #include "queue.c"
 typedef struct TLibAVEnv
 {
@@ -42,6 +48,8 @@ typedef struct TLibAVEnv
     AVFrame *OneFrame;
     AVFrame *yoloFrame;
     struct SwsContext *swsCtx;
+    rknn_app_context_t rknnCtx;
+    image_buffer_t yolo8Image;
 
 } TLibAVEnv;
 TLibAVEnv *NewTLibAVEnv()
@@ -64,7 +72,19 @@ TLibAVEnv *NewTLibAVEnv()
     Env->inputAudioCodec = NULL;
     return Env;
 }
-int OpenStream(TLibAVEnv *Env, const char *inputUrl, const char *outputUrl)
+int TLibAVEnvInit(TLibAVEnv *Env)
+{
+    init_post_process();
+    int ret = init_yolov8_model("./model/yolov8n.rknn", &Env->rknnCtx);
+    if (ret != 0)
+    {
+        printf("init_yolov8_model fail!\n");
+        return -1;
+    }
+    memset(&Env->yolo8Image, 0, sizeof(image_buffer_t));
+    return 0;
+}
+int TLibAVEnvOpenStream(TLibAVEnv *Env, const char *inputUrl, const char *outputUrl)
 {
     int ret;
     char error_buffer[128];
@@ -250,7 +270,7 @@ int OpenStream(TLibAVEnv *Env, const char *inputUrl, const char *outputUrl)
     }
     return 0;
 }
-void InitSWS(TLibAVEnv *Env)
+void TLibAVEnvInitSWS(TLibAVEnv *Env)
 {
     struct SwsContext *sws_ctx = sws_getContext(
         Env->inputAudioCodecCtx->width,
@@ -263,7 +283,7 @@ void InitSWS(TLibAVEnv *Env)
                          Env->yoloFrame->linesize,
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
 }
-void LibAvStreamEnvLoop(TLibAVEnv *Env, Queue *queue)
+void TLibAVEnvLoop(TLibAVEnv *Env, Queue *queue)
 {
 
     pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -336,6 +356,17 @@ void DestroyTLibAVEnv(TLibAVEnv *Env)
         avio_closep(&Env->outputFmtCtx->pb);
     }
     avformat_free_context(Env->outputFmtCtx);
+    //
+    deinit_post_process();
+    int ret = release_yolov8_model(&Env->rknnCtx);
+    if (ret != 0)
+    {
+        printf("release_yolov8_model fail! ret=%d\n", ret);
+    }
+    if (Env->yolo8Image.virt_addr != NULL)
+    {
+        free(Env->yolo8Image.virt_addr);
+    }
 }
 
 #endif

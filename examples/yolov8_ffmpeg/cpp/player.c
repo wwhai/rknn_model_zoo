@@ -47,13 +47,14 @@ void *LibAvThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
     int ret;
-    ret = OpenStream(player->AvEnv, "rtsp://192.168.10.244:554/av0_0",
-                     "rtmp://192.168.10.163:1935/live/test002");
+    ret = TLibAVEnvOpenStream(player->AvEnv,
+                              "rtsp://192.168.10.244:554/av0_0",
+                              "rtmp://192.168.10.163:1935/live/test001");
     if (ret < 0)
     {
         exit(1);
     }
-    LibAvStreamEnvLoop(player->AvEnv, player->queue);
+    TLibAVEnvLoop(player->AvEnv, player->queue);
     pthread_exit(NULL);
 }
 void *Sdl2ThreadCallback(void *data)
@@ -70,12 +71,13 @@ void *Sdl2ThreadCallback(void *data)
 }
 void StartTPlayer(TPlayer *player)
 {
-    void *retival;
+    TLibAVEnvInit(player->AvEnv);
+    void *ret_val;
     pthread_t Sdl2Thread, LibAvThread;
     pthread_create(&Sdl2Thread, NULL, &Sdl2ThreadCallback, (void *)player);
     pthread_create(&LibAvThread, NULL, &LibAvThreadCallback, (void *)player);
-    pthread_join(Sdl2Thread, &retival);
-    pthread_join(LibAvThread, &retival);
+    pthread_join(Sdl2Thread, &ret_val);
+    pthread_join(LibAvThread, &ret_val);
 }
 
 void StopTPlayer(TPlayer *player)
