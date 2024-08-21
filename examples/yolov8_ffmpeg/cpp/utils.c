@@ -16,13 +16,11 @@
  */
 #ifndef UTIL
 #define UTIL
-extern "C"
-{
+
 #include <SDL2/SDL.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
-}
 
 void print_version()
 {

@@ -16,20 +16,13 @@
  */
 #ifndef SDL2ENV
 #define SDL2ENV
-extern "C"
-{
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <libavformat/avformat.h>
-}
 #include "types.c"
 #include "queue.c"
-
-#include "yolov8.h"
-#include "image_utils.h"
-#include "file_utils.h"
-#include "image_drawing.h"
+#include <pthread.h>
 
 typedef struct TLibSDL2Env
 {
@@ -43,6 +36,49 @@ int SDLDrawText(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x,
 void SDLDrawRect(SDL_Renderer *renderer, int x, int y, int width, int height);
 void TLibSDL2EnvDisplayFrame(TLibSDL2Env *Env, AVFrame *sdl_frame);
 // 封装的函数，用于渲染文本
+
+void DrawBox(SDL_Renderer *renderer, TTF_Font *font, const char *text,
+             int x, int y, int w, int h, int thickness)
+{
+    // Draw the rectangle with the specified thickness
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 0); // White color
+
+    // Draw top border
+    SDL_Rect top = {x, y, w, thickness};
+    SDL_RenderFillRect(renderer, &top);
+
+    // Draw bottom border
+    SDL_Rect bottom = {x, y + h - thickness, w, thickness};
+    SDL_RenderFillRect(renderer, &bottom);
+
+    // Draw left border
+    SDL_Rect left = {x, y, thickness, h};
+    SDL_RenderFillRect(renderer, &left);
+
+    // Draw right border
+    SDL_Rect right = {x + w - thickness, y, thickness, h};
+    SDL_RenderFillRect(renderer, &right);
+
+    // Render text above the rectangle
+    if (text != NULL)
+    {
+        SDL_Color textColor = {255, 0, 0, 0}; // White color
+        SDL_Surface *textSurface = TTF_RenderText_Solid(font, text, textColor);
+        SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+
+        SDL_Rect textRect;
+        textRect.x = x;
+        textRect.y = y - textSurface->h; // Position text above the rectangle
+        textRect.w = textSurface->w;
+        textRect.h = textSurface->h;
+
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+    }
+}
+
 int SDLDrawText(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x, int y)
 {
 
@@ -78,25 +114,13 @@ void SDLDrawRect(SDL_Renderer *renderer, int x, int y,
 }
 void TLibSDL2EnvDisplayFrame(TLibSDL2Env *Env, AVFrame *sdl_frame)
 {
-    SDL_Rect rects[4] = {
-        {0, 0, 960, 540},
-        {960, 0, 960, 540},
-        {0, 540, 960, 540},
-        {960, 540, 960, 540},
-    };
-
-    SDL_RenderClear(Env->mainRenderer);
     SDL_UpdateYUVTexture(Env->mainTexture, NULL,
                          sdl_frame->data[0], sdl_frame->linesize[0],
                          sdl_frame->data[1], sdl_frame->linesize[1],
                          sdl_frame->data[2], sdl_frame->linesize[2]);
     SDL_Rect srcRect = {0, 0, 1920, 1080};
-    for (size_t i = 0; i < 4; i++)
-    {
-        SDL_RenderCopy(Env->mainRenderer, Env->mainTexture, &srcRect, &rects[i]);
-    }
-
-    SDL_RenderPresent(Env->mainRenderer);
+    SDL_Rect distRect = {0, 0, 1920, 1080};
+    SDL_RenderCopy(Env->mainRenderer, Env->mainTexture, &srcRect, &distRect);
 }
 
 TLibSDL2Env *NewLibSdl2Env()
@@ -121,20 +145,20 @@ int InitTLibSDL2Env(TLibSDL2Env *Env, int w, int h)
     Env->mainWindow = SDL_CreateWindow("FSY PLAYER",
                                        SDL_WINDOWPOS_CENTERED,
                                        SDL_WINDOWPOS_CENTERED,
-                                       w - 50, h - 50, SDL_WINDOW_SHOWN);
+                                       w, h, SDL_WINDOW_SHOWN);
     if (!Env->mainWindow)
     {
         printf("SDL_CreateWindow Error: %s\n", TTF_GetError());
         return -1;
     }
-    Env->mainRenderer = SDL_CreateRenderer(Env->mainWindow, -1, 0);
+    Env->mainRenderer = SDL_CreateRenderer(Env->mainWindow, -1, SDL_RENDERER_ACCELERATED);
     if (!Env->mainRenderer)
     {
         printf("SDL_CreateWindow Error: %s\n", TTF_GetError());
         return -1;
     }
     Env->mainTexture = SDL_CreateTexture(Env->mainRenderer,
-                                         SDL_PIXELFORMAT_YV12,
+                                         SDL_PIXELFORMAT_IYUV,
                                          SDL_TEXTUREACCESS_STREAMING,
                                          w, h);
     if (!Env->mainTexture)
@@ -155,33 +179,32 @@ void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, Queue *queue)
     SDL_Event e;
     int running = 1;
     int mouse_x = 0, mouse_y = 0;
+    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
     QueueData oqd;
     while (running)
     {
 
+        //------------------------------------------------------------------------------------------
         SDL_RenderClear(Env->mainRenderer);
         SDL_SetRenderDrawColor(Env->mainRenderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-
         if (!isQueueEmpty(queue))
         {
-            QueueData nqd = dequeue(queue);
-            if (nqd.frame != NULL)
+            for (size_t i = 0; i < queueSize(queue); i++)
             {
+                pthread_mutex_lock(&lock);
+                QueueData nqd = dequeue(queue);
+                pthread_mutex_unlock(&lock);
                 oqd.frame = nqd.frame;
             }
-        }
-        if (oqd.frame == NULL)
-        {
-            continue;
         }
         if (oqd.frame != NULL)
         {
             TLibSDL2EnvDisplayFrame(Env, oqd.frame);
         }
-
         SDLDrawText(Env->mainRenderer, Env->mainFont, "Hello!", mouse_x, mouse_y);
         SDLDrawRect(Env->mainRenderer, mouse_x, mouse_y, 150, 100);
         SDL_RenderPresent(Env->mainRenderer);
+        //------------------------------------------------------------------------------------------
 
         while (SDL_PollEvent(&e))
         {
@@ -193,7 +216,7 @@ void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, Queue *queue)
             {
                 mouse_x = e.motion.x;
                 mouse_y = e.motion.y;
-                printf("SDL_MOUSEMOTION: %d,%d\n", mouse_x, mouse_y);
+                // printf("SDL_MOUSEMOTION: %d,%d\n", mouse_x, mouse_y);
             }
             else if (e.type == SDL_KEYDOWN)
             {

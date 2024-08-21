@@ -14,34 +14,35 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-#if defined(_WIN32) || defined(_WIN64)
 
 #ifdef _WIN32
+#define SDL_MAIN_HANDLED
 #include <windows.h>
 #else
 #include <unistd.h>
 #endif
 
-#define SDL_MAIN_HANDLED
-#endif
-
+#include <stdio.h>
 #include <signal.h>
 #include "player.c"
 
-// 信号处理函数
+TPlayer *p;
 void signalHandler(int signal)
 {
        if (signal == SIGINT)
        {
               printf("Ctrl-C received, stopping the program.\n");
+              if (p)
+              {
+                     StopTPlayer(p);
+              }
               exit(0);
        }
 }
 int main()
 {
        signal(SIGINT, signalHandler);
-
-       TPlayer *p = NewTPlayer();
+       p = NewTPlayer();
        StartTPlayer(p);
        while (1)
        {
