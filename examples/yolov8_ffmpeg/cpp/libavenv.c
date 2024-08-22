@@ -50,6 +50,7 @@ typedef struct TLibAVEnv
     struct SwsContext *swsCtx;
     rknn_app_context_t rknnCtx;
     image_buffer_t yolo8Image;
+    struct SwsContext *swsCtx;
 
 } TLibAVEnv;
 TLibAVEnv *NewTLibAVEnv()
@@ -270,12 +271,13 @@ int TLibAVEnvOpenStream(TLibAVEnv *Env, const char *inputUrl, const char *output
     }
     return 0;
 }
+
 void TLibAVEnvInitSWS(TLibAVEnv *Env)
 {
-    struct SwsContext *sws_ctx = sws_getContext(
-        Env->inputAudioCodecCtx->width,
-        Env->inputAudioCodecCtx->height,
-        Env->inputAudioCodecCtx->pix_fmt,
+    Env->swsCtx = sws_getContext(
+        Env->inputVideoCodecCtx->width,
+        Env->inputVideoCodecCtx->height,
+        Env->inputVideoCodecCtx->pix_fmt,
         640, 640, AV_PIX_FMT_RGB24,
         SWS_BILINEAR, NULL, NULL, NULL);
     uint8_t *rgb_buffer = (uint8_t *)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1));
@@ -283,6 +285,7 @@ void TLibAVEnvInitSWS(TLibAVEnv *Env)
                          Env->yoloFrame->linesize,
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
 }
+
 void TLibAVEnvLoop(TLibAVEnv *Env, Queue *queue)
 {
 
@@ -368,5 +371,38 @@ void DestroyTLibAVEnv(TLibAVEnv *Env)
         free(Env->yolo8Image.virt_addr);
     }
 }
-
+// 执行模型
+void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
+{
+    sws_scale(swsContext, (const uint8_t *const *)Env->OneFrame->data,
+              Env->OneFrame->linesize, 0, Env->OneFrame->height,
+              Env->yoloFrame->data, Env->yoloFrame->linesize);
+    image_format_t src_image;
+    src_image.width = 640;
+    src_image.height = 640;
+    src_image.width_stride = 0;
+    src_image.height_stride = 0;
+    src_image.format = IMAGE_FORMAT_RGBA8888;
+    src_image.virt_addr = Env->yoloFrame->data;
+    object_detect_result_list od_results;
+    int ret = inference_yolov8_model(&rknn_app_ctx, &src_image, &od_results);
+    if (ret != 0)
+    {
+        printf("init_yolov8_model fail! ret=%d\n", ret);
+    }
+    else
+    {
+        printf("init_yolov8_model success! ret=%d\n", ret);
+        for (int i = 0; i < od_results.count; i++)
+        {
+            object_detect_result *det_result = &(od_results.results[i]);
+            printf("object_detect_result: %s @ (%d %d %d %d) %.3f\n",
+                   coco_cls_to_name(det_result->cls_id),
+                   det_result->box.left, det_result->box.top,
+                   det_result->box.right, det_result->box.bottom,
+                   det_result->prop);
+        }
+    }
+    // free(src_image.virt_addr);
+}
 #endif

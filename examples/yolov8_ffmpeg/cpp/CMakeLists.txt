@@ -36,13 +36,10 @@ add_executable(${PROJECT_NAME}
     ${rknpu_yolov8_file}
 )
 
-set(SDL2_LIBRARIES /usr/lib/aarch64-linux-gnu/libSDL2.so)
-set(SDL2_TTF_LIBRARIES /usr/lib/aarch64-linux-gnu/libSDL2_ttf.so)
+set(SDL2_LIBRARIES /usr/lib/x86_64-linux-gnu/libSDL2.so)
+set(SDL2_TTF_LIBRARIES /usr/lib/x86_64-linux-gnu/libSDL2_ttf.so)
 
-set(SDL2_INCLUDE_DIRS /usr/include/SDL2)
-set(SDL2_TTF_INCLUDE_DIRS /usr/include/SDL2)
-
-include_directories(${SDL2_INCLUDE_DIRS}${SDL2_TTF_INCLUDE_DIRS})
+include_directories(/usr/include/x86_64-linux-gnu /usr/include/SDL2)
 
 target_link_libraries(${PROJECT_NAME}
     ${SDL2_LIBRARIES}

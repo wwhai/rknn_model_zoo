@@ -17,40 +17,27 @@
 
 #ifdef _WIN32
 #define SDL_MAIN_HANDLED
-#include <windows.h>
-#else
-#include <unistd.h>
 #endif
-
 #include <stdio.h>
-#include <signal.h>
 #include "player.c"
 
 TPlayer *p;
-void signalHandler(int signal)
-{
-       if (signal == SIGINT)
-       {
-              printf("Ctrl-C received, stopping the program.\n");
-              if (p)
-              {
-                     StopTPlayer(p);
-              }
-              exit(0);
-       }
-}
+
 int main()
 {
-       signal(SIGINT, signalHandler);
        p = NewTPlayer();
        StartTPlayer(p);
        while (1)
        {
-#ifdef _WIN32
-              Sleep(50);
-#else
-              sleep(0.05);
-#endif
+              printf("Enter a character ('q' to quit): ");
+              inputChar = getchar();
+              while (getchar() != '\n')
+                     continue;
+              if (inputChar == 'q' || inputChar == 'Q')
+              {
+                     printf("Exiting.\n");
+                     break;
+              }
        }
        StopTPlayer(p);
        return 0;

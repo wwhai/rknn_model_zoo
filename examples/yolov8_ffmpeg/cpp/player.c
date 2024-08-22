@@ -40,6 +40,7 @@ TPlayer *NewTPlayer()
     TNew(TPlayer, player);
     player->Sdl2Env = NewLibSdl2Env();
     player->AvEnv = NewTLibAVEnv();
+    TLibAVEnvInitSWS(player->AvEnv);
     player->queue = NewQueue();
     return player;
 }
