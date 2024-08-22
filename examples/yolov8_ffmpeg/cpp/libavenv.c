@@ -16,12 +16,15 @@
  */
 #ifndef LIBAVENV
 #define LIBAVENV
-
+extern "C"
+{
 #include <libavcodec/avcodec.h>
 #include <libswscale/swscale.h>
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/log.h>
+}
+
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -47,7 +50,6 @@ typedef struct TLibAVEnv
     AVPacket *OnePacket;
     AVFrame *OneFrame;
     AVFrame *yoloFrame;
-    struct SwsContext *swsCtx;
     rknn_app_context_t rknnCtx;
     image_buffer_t yolo8Image;
     struct SwsContext *swsCtx;
@@ -374,18 +376,19 @@ void DestroyTLibAVEnv(TLibAVEnv *Env)
 // 执行模型
 void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
 {
-    sws_scale(swsContext, (const uint8_t *const *)Env->OneFrame->data,
+    sws_scale(Env->swsCtx, (const uint8_t *const *)Env->OneFrame->data,
               Env->OneFrame->linesize, 0, Env->OneFrame->height,
               Env->yoloFrame->data, Env->yoloFrame->linesize);
-    image_format_t src_image;
+    image_buffer_t src_image;
+    src_image.size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1);
     src_image.width = 640;
     src_image.height = 640;
     src_image.width_stride = 0;
     src_image.height_stride = 0;
     src_image.format = IMAGE_FORMAT_RGBA8888;
-    src_image.virt_addr = Env->yoloFrame->data;
+    src_image.virt_addr = (unsigned char *)Env->yoloFrame->data;
     object_detect_result_list od_results;
-    int ret = inference_yolov8_model(&rknn_app_ctx, &src_image, &od_results);
+    int ret = inference_yolov8_model(&Env->rknnCtx, &src_image, &od_results);
     if (ret != 0)
     {
         printf("init_yolov8_model fail! ret=%d\n", ret);

@@ -30,7 +30,7 @@ int main()
        while (1)
        {
               printf("Enter a character ('q' to quit): ");
-              inputChar = getchar();
+              char inputChar = getchar();
               while (getchar() != '\n')
                      continue;
               if (inputChar == 'q' || inputChar == 'Q')

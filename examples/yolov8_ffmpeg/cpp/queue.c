@@ -17,7 +17,11 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
+extern "C"
+{
 #include <libavformat/avformat.h>
+}
+
 #include <stdlib.h>
 #include <stdio.h>
 

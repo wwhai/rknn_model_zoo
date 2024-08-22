@@ -16,14 +16,16 @@
  */
 #ifndef SDL2ENV
 #define SDL2ENV
-
+extern "C"
+{
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <libavformat/avformat.h>
+}
+
 #include "types.c"
 #include "queue.c"
 #include <pthread.h>
-
 
 typedef struct TLibSDL2Env
 {
@@ -31,7 +33,6 @@ typedef struct TLibSDL2Env
     SDL_Renderer *mainRenderer;
     SDL_Texture *mainTexture;
     TTF_Font *mainFont;
-
 
 } TLibSDL2Env;
 void DestroySDL2Env(TLibSDL2Env *Env);

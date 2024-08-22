@@ -41,7 +41,7 @@ typedef struct
     int model_channel;
     int model_width;
     int model_height;
-    bool is_quant;
+    int is_quant;
 } rknn_app_context_t;
 
 #include "postprocess.h"

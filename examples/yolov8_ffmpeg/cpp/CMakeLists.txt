@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(rknn_yolov8_demo)
+project(rknn_yolov8_ffmpeg_demo)
 
 if (ENABLE_ASAN)
         message(STATUS "BUILD WITH ADDRESS SANITIZER")
@@ -36,10 +36,11 @@ add_executable(${PROJECT_NAME}
     ${rknpu_yolov8_file}
 )
 
-set(SDL2_LIBRARIES /usr/lib/x86_64-linux-gnu/libSDL2.so)
-set(SDL2_TTF_LIBRARIES /usr/lib/x86_64-linux-gnu/libSDL2_ttf.so)
+set(SDL2_LIBRARIES /usr/lib/aarch64-linux-gnu/libSDL2.so)
+set(SDL2_TTF_LIBRARIES /usr/lib/aarch64-linux-gnu/libSDL2_ttf.so)
 
-include_directories(/usr/include/x86_64-linux-gnu /usr/include/SDL2)
+include_directories(/usr/include/aarch64-linux-gnu)
+link_directories(/usr/lib/aarch64-linux-gnu)
 
 target_link_libraries(${PROJECT_NAME}
     ${SDL2_LIBRARIES}
@@ -47,11 +48,11 @@ target_link_libraries(${PROJECT_NAME}
     imageutils
     fileutils
     imagedrawing
-    avcodec
-    avformat
-    avutil
-    swscale
-    swresample
+    libavcodec.a
+    libavformat.a
+    libavutil.a
+    libswscale.a
+    libswresample.a
     ${LIBRKNNRT}
     lzma
     m
