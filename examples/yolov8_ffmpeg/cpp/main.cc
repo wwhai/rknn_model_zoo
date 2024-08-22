@@ -21,23 +21,20 @@
 #include <stdio.h>
 #include "player.c"
 
-TPlayer *p;
-
 int main()
 {
-       p = NewTPlayer();
+       TPlayer *p = NewTPlayer();
        StartTPlayer(p);
        while (1)
        {
-              printf("Enter a character ('q' to quit): ");
               char inputChar = getchar();
-              while (getchar() != '\n')
-                     continue;
               if (inputChar == 'q' || inputChar == 'Q')
               {
                      printf("Exiting.\n");
-                     break;
+                     exit(0);
               }
+              ungetc(inputChar, stdin); // 将字符推回到输入缓冲区
+              printf("Enter a character ('q' to quit): ");
        }
        StopTPlayer(p);
        return 0;

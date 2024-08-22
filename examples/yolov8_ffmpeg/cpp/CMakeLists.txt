@@ -48,11 +48,11 @@ target_link_libraries(${PROJECT_NAME}
     imageutils
     fileutils
     imagedrawing
-    libavcodec.a
-    libavformat.a
-    libavutil.a
-    libswscale.a
-    libswresample.a
+    avcodec
+    avformat
+    avutil
+    swscale
+    swresample
     ${LIBRKNNRT}
     lzma
     m

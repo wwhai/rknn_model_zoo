@@ -22,12 +22,6 @@
 #include "libsdl2env.c"
 #include "queue.c"
 
-enum TStatus
-{
-    TPlayerStatus_STOP = 0,
-    TPlayerStatus_PLAYING,
-    TPlayerStatus_ERROR
-};
 typedef struct
 {
     int status;
@@ -35,15 +29,17 @@ typedef struct
     TLibSDL2Env *Sdl2Env;
     Queue *queue;
 } TPlayer;
+
 TPlayer *NewTPlayer()
 {
     TNew(TPlayer, player);
-    player->Sdl2Env = NewLibSdl2Env();
     player->AvEnv = NewTLibAVEnv();
-    TLibAVEnvInitSWS(player->AvEnv);
+    // player->Sdl2Env = NewLibSdl2Env();
+    // TLibAVEnvInitSWS(player->AvEnv);
     player->queue = NewQueue();
     return player;
 }
+
 void *LibAvThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
@@ -58,6 +54,7 @@ void *LibAvThreadCallback(void *data)
     TLibAVEnvLoop(player->AvEnv, player->queue);
     pthread_exit(NULL);
 }
+
 void *Sdl2ThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
@@ -75,8 +72,8 @@ void StartTPlayer(TPlayer *player)
     TLibAVEnvInit(player->AvEnv);
     void *ret_val;
     pthread_t Sdl2Thread, LibAvThread;
-    pthread_create(&Sdl2Thread, NULL, &Sdl2ThreadCallback, (void *)player);
-    pthread_join(Sdl2Thread, &ret_val);
+    // pthread_create(&Sdl2Thread, NULL, &Sdl2ThreadCallback, (void *)player);
+    // pthread_join(Sdl2Thread, &ret_val);
     pthread_create(&LibAvThread, NULL, &LibAvThreadCallback, (void *)player);
     pthread_join(LibAvThread, &ret_val);
 }
