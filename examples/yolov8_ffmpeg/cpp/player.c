@@ -24,7 +24,6 @@
 
 typedef struct
 {
-    int status;
     TLibAVEnv *AvEnv;
     TLibSDL2Env *Sdl2Env;
     Queue *queue;
@@ -34,48 +33,67 @@ TPlayer *NewTPlayer()
 {
     TNew(TPlayer, player);
     player->AvEnv = NewTLibAVEnv();
-    // player->Sdl2Env = NewLibSdl2Env();
-    // TLibAVEnvInitSWS(player->AvEnv);
+    player->Sdl2Env = NewLibSdl2Env();
     player->queue = NewQueue();
     return player;
 }
-
+int TPlayerInit(TPlayer *player)
+{
+    int ret = -1;
+    ret = TLibAVEnvInitCodec(player->AvEnv,
+                             "rtsp://192.168.10.244:554/av0_0",
+                             "rtmp://192.168.10.163:1935/live/test001");
+    if (ret < 0)
+    {
+        return ret;
+    }
+    ret = TLibAVEnvInitSWS(player->AvEnv);
+    if (ret < 0)
+    {
+        return ret;
+    }
+    ret = TLibAVEnvInitModel(player->AvEnv);
+    if (ret < 0)
+    {
+        return ret;
+    }
+    ret = InitTLibSDL2Env(player->Sdl2Env, 1920, 1080);
+    if (ret < 0)
+    {
+        return ret;
+    }
+    return 1;
+}
 void *LibAvThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
-    int ret;
-    ret = TLibAVEnvOpenStream(player->AvEnv,
-                              "rtsp://192.168.10.244:554/av0_0",
-                              "rtmp://192.168.10.163:1935/live/test001");
-    if (ret < 0)
-    {
-        exit(1);
-    }
-    TLibAVEnvLoop(player->AvEnv, player->queue);
+    TLibAVEnvLoopReceive(player->AvEnv, player->queue);
     pthread_exit(NULL);
 }
 
 void *Sdl2ThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
-    int ret;
-    ret = InitTLibSDL2Env(player->Sdl2Env, 1920, 1080);
-    if (ret < 0)
-    {
-        exit(1);
-    }
     TLibSDL2EnvEventLoop(player->Sdl2Env, player->queue);
     pthread_exit(NULL);
 }
+
 void StartTPlayer(TPlayer *player)
 {
-    TLibAVEnvInit(player->AvEnv);
     void *ret_val;
     pthread_t Sdl2Thread, LibAvThread;
-    // pthread_create(&Sdl2Thread, NULL, &Sdl2ThreadCallback, (void *)player);
-    // pthread_join(Sdl2Thread, &ret_val);
+    pthread_create(&Sdl2Thread, NULL, &Sdl2ThreadCallback, (void *)player);
+    pthread_join(Sdl2Thread, &ret_val);
+    if (ret_val < 0)
+    {
+        exit(ret_val);
+    }
     pthread_create(&LibAvThread, NULL, &LibAvThreadCallback, (void *)player);
     pthread_join(LibAvThread, &ret_val);
+    if (ret_val < 0)
+    {
+        exit(ret_val);
+    }
 }
 
 void StopTPlayer(TPlayer *player)

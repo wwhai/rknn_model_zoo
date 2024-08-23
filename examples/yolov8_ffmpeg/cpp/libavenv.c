@@ -62,20 +62,17 @@ TLibAVEnv *NewTLibAVEnv()
     Env->videoInstreamIndex = -1;
     Env->audioInstreamIndex = -1;
     Env->inputFmtCtx = NULL;
-    Env->outputFmtCtx = NULL;
-    Env->inputAudioCodecCtx = NULL;
-    Env->inputVideoCodecCtx = NULL;
-    Env->outputCodecCtx = NULL;
-    Env->outputVideoStream = NULL;
-    Env->OnePacket = NULL;
-    Env->OneFrame = NULL;
-    Env->yoloFrame = NULL;
-    Env->outputCodec = NULL;
     Env->inputVideoCodec = NULL;
     Env->inputAudioCodec = NULL;
+    Env->inputAudioCodecCtx = NULL;
+    Env->inputVideoCodecCtx = NULL;
+    Env->outputFmtCtx = NULL;
+    Env->outputCodec = NULL;
+    Env->outputCodecCtx = NULL;
+    Env->outputVideoStream = NULL;
     return Env;
 }
-int TLibAVEnvInit(TLibAVEnv *Env)
+int TLibAVEnvInitModel(TLibAVEnv *Env)
 {
     init_post_process();
     int ret = init_yolov8_model("./model/yolov8n.rknn", &Env->rknnCtx);
@@ -85,9 +82,34 @@ int TLibAVEnvInit(TLibAVEnv *Env)
         return -1;
     }
     memset(&Env->yolo8Image, 0, sizeof(image_buffer_t));
+    return 1;
+}
+int TLibAVEnvInitAvFrame(TLibAVEnv *Env)
+{
+    Env->OneFrame = av_frame_alloc();
+    if (!Env->OneFrame)
+    {
+        av_strerror(ret, error_buffer, sizeof(error_buffer));
+        fprintf(stderr, "av_frame_alloc OneFrame: %s\n", error_buffer);
+        return 1;
+    }
+    Env->yoloFrame = av_frame_alloc();
+    if (!Env->yoloFrame)
+    {
+        av_strerror(ret, error_buffer, sizeof(error_buffer));
+        fprintf(stderr, "av_frame_alloc yoloFrame: %s\n", error_buffer);
+        return 1;
+    }
+    Env->OnePacket = av_packet_alloc();
+    if (!Env->OnePacket)
+    {
+        av_strerror(ret, error_buffer, sizeof(error_buffer));
+        fprintf(stderr, "av_packet_alloc OnePacket: %s\n", error_buffer);
+        return 1;
+    }
     return 0;
 }
-int TLibAVEnvOpenStream(TLibAVEnv *Env, const char *inputUrl, const char *outputUrl)
+int TLibAVEnvInitCodec(TLibAVEnv *Env, const char *inputUrl, const char *outputUrl)
 {
     int ret;
     char error_buffer[128];
@@ -250,27 +272,7 @@ int TLibAVEnvOpenStream(TLibAVEnv *Env, const char *inputUrl, const char *output
         fprintf(stderr, "avformat_write_header outputFmtCtx: %s\n", error_buffer);
         return 1;
     }
-    Env->OneFrame = av_frame_alloc();
-    if (!Env->OneFrame)
-    {
-        av_strerror(ret, error_buffer, sizeof(error_buffer));
-        fprintf(stderr, "av_frame_alloc OneFrame: %s\n", error_buffer);
-        return 1;
-    }
-    Env->yoloFrame = av_frame_alloc();
-    if (!Env->yoloFrame)
-    {
-        av_strerror(ret, error_buffer, sizeof(error_buffer));
-        fprintf(stderr, "av_frame_alloc yoloFrame: %s\n", error_buffer);
-        return 1;
-    }
-    Env->OnePacket = av_packet_alloc();
-    if (!Env->OnePacket)
-    {
-        av_strerror(ret, error_buffer, sizeof(error_buffer));
-        fprintf(stderr, "av_packet_alloc OnePacket: %s\n", error_buffer);
-        return 1;
-    }
+
     return 0;
 }
 
@@ -288,7 +290,7 @@ void TLibAVEnvInitSWS(TLibAVEnv *Env)
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
 }
 
-void TLibAVEnvLoop(TLibAVEnv *Env, Queue *queue)
+void TLibAVEnvLoopReceive(TLibAVEnv *Env, Queue *queue)
 {
 
     pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -406,6 +408,5 @@ void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
                    det_result->prop);
         }
     }
-    // free(src_image.virt_addr);
 }
 #endif
