@@ -27,14 +27,13 @@ int main()
        StartTPlayer(p);
        while (1)
        {
+              printf("Enter a character ('q' to quit): ");
               char inputChar = getchar();
               if (inputChar == 'q' || inputChar == 'Q')
               {
                      printf("Exiting.\n");
                      exit(0);
               }
-              ungetc(inputChar, stdin); // 将字符推回到输入缓冲区
-              printf("Enter a character ('q' to quit): ");
        }
        StopTPlayer(p);
        return 0;
