@@ -284,9 +284,9 @@ void TLibAVEnvInitSWS(TLibAVEnv *Env)
         Env->inputVideoCodecCtx->pix_fmt,
         640, 640, AV_PIX_FMT_RGB24,
         SWS_BILINEAR, NULL, NULL, NULL);
+
     uint8_t *rgb_buffer = (uint8_t *)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1));
-    av_image_fill_arrays(Env->yoloFrame->data,
-                         Env->yoloFrame->linesize,
+    av_image_fill_arrays(Env->yoloFrame->data, Env->yoloFrame->linesize,
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
 }
 
@@ -338,6 +338,7 @@ void TLibAVEnvLoopReceive(TLibAVEnv *Env, Queue *queue)
                     {
                         continue;
                     }
+                    // PUSH
                     if (av_interleaved_write_frame(Env->outputFmtCtx, Env->OnePacket) < 0)
                     {
                         fprintf(stderr, "Error writing packet to output file\n");
