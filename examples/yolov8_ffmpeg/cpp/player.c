@@ -84,16 +84,8 @@ void StartTPlayer(TPlayer *player)
     pthread_t Sdl2Thread, LibAvThread;
     pthread_create(&Sdl2Thread, NULL, &Sdl2ThreadCallback, (void *)player);
     pthread_join(Sdl2Thread, &ret_val);
-    if (ret_val < 0)
-    {
-        exit(ret_val);
-    }
     pthread_create(&LibAvThread, NULL, &LibAvThreadCallback, (void *)player);
     pthread_join(LibAvThread, &ret_val);
-    if (ret_val < 0)
-    {
-        exit(ret_val);
-    }
 }
 
 void StopTPlayer(TPlayer *player)

@@ -56,6 +56,18 @@ TLibSDL2Env *NewLibSdl2Env()
 
     return Sdl2Env;
 }
+
+void TLibSDL2EnvDisplayFrame(TLibSDL2Env *Env, AVFrame *sdl_frame)
+{
+    SDL_UpdateYUVTexture(Env->mainTexture, NULL,
+                         sdl_frame->data[0], sdl_frame->linesize[0],
+                         sdl_frame->data[1], sdl_frame->linesize[1],
+                         sdl_frame->data[2], sdl_frame->linesize[2]);
+    SDL_Rect srcRect = {0, 0, 1920, 1080};
+    SDL_Rect distRect = {0, 0, 1920, 1080};
+    SDL_RenderCopy(Env->mainRenderer, Env->mainTexture, &srcRect, &distRect);
+}
+
 int InitTLibSDL2Env(TLibSDL2Env *Env, int w, int h)
 {
     Env->mainWindow = SDL_CreateWindow("FSY PLAYER",
@@ -117,8 +129,6 @@ void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, Queue *queue)
         {
             TLibSDL2EnvDisplayFrame(Env, oqd.frame);
         }
-        SDLDrawText(Env->mainRenderer, Env->mainFont, "Hello!", mouse_x, mouse_y);
-        SDLDrawRect(Env->mainRenderer, mouse_x, mouse_y, 150, 100);
         SDL_RenderPresent(Env->mainRenderer);
         //------------------------------------------------------------------------------------------
 

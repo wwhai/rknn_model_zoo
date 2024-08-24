@@ -86,6 +86,8 @@ int TLibAVEnvInitModel(TLibAVEnv *Env)
 }
 int TLibAVEnvInitAvFrame(TLibAVEnv *Env)
 {
+    int ret;
+    char error_buffer[128];
     Env->OneFrame = av_frame_alloc();
     if (!Env->OneFrame)
     {
@@ -276,7 +278,7 @@ int TLibAVEnvInitCodec(TLibAVEnv *Env, const char *inputUrl, const char *outputU
     return 0;
 }
 
-void TLibAVEnvInitSWS(TLibAVEnv *Env)
+int TLibAVEnvInitSWS(TLibAVEnv *Env)
 {
     Env->swsCtx = sws_getContext(
         Env->inputVideoCodecCtx->width,
@@ -288,6 +290,7 @@ void TLibAVEnvInitSWS(TLibAVEnv *Env)
     uint8_t *rgb_buffer = (uint8_t *)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1));
     av_image_fill_arrays(Env->yoloFrame->data, Env->yoloFrame->linesize,
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
+    return 1;
 }
 
 void TLibAVEnvLoopReceive(TLibAVEnv *Env, Queue *queue)

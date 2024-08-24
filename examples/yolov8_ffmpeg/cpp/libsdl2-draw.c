@@ -18,7 +18,7 @@ extern "C"
 #include <SDL2/SDL_ttf.h>
 #include <libavformat/avformat.h>
 }
-
+#include "libsdl2env.c"
 void DrawBox(SDL_Renderer *renderer, TTF_Font *font, const char *text,
              int x, int y, int w, int h, int thickness)
 {
@@ -70,15 +70,4 @@ int SDLDrawText(SDL_Renderer *renderer, TTF_Font *font, const char *text, int x,
     SDL_FreeSurface(textSurface);
 
     return 0;
-}
-
-void TLibSDL2EnvDisplayFrame(TLibSDL2Env *Env, AVFrame *sdl_frame)
-{
-    SDL_UpdateYUVTexture(Env->mainTexture, NULL,
-                         sdl_frame->data[0], sdl_frame->linesize[0],
-                         sdl_frame->data[1], sdl_frame->linesize[1],
-                         sdl_frame->data[2], sdl_frame->linesize[2]);
-    SDL_Rect srcRect = {0, 0, 1920, 1080};
-    SDL_Rect distRect = {0, 0, 1920, 1080};
-    SDL_RenderCopy(Env->mainRenderer, Env->mainTexture, &srcRect, &distRect);
 }
