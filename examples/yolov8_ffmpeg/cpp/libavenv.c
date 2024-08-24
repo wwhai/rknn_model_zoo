@@ -401,12 +401,12 @@ void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
         printf("init_yolov8_model success! ret=%d\n", ret);
         for (int i = 0; i < od_results.count; i++)
         {
-            object_detect_result *det_result = &(od_results.results[i]);
+            object_detect_result det_result = od_results.results[i];
             printf("object_detect_result: %s @ (%d %d %d %d) %.3f\n",
-                   coco_cls_to_name(det_result->cls_id),
-                   det_result->box.left, det_result->box.top,
-                   det_result->box.right, det_result->box.bottom,
-                   det_result->prop);
+                   coco_cls_to_name(det_result.cls_id),
+                   det_result.box.left, det_result.box.top,
+                   det_result.box.right, det_result.box.bottom,
+                   det_result.prop);
         }
     }
 }
