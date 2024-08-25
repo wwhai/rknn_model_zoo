@@ -42,7 +42,12 @@ set(SDL2_TTF_LIBRARIES /usr/lib/aarch64-linux-gnu/libSDL2_ttf.so)
 include_directories(/usr/include/aarch64-linux-gnu)
 link_directories(/usr/lib/aarch64-linux-gnu)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DRM REQUIRED libdrm)
+include_directories(${DRM_INCLUDE_DIRS})
+
 target_link_libraries(${PROJECT_NAME}
+    ${DRM_LIBRARIES}
     ${SDL2_LIBRARIES}
     ${SDL2_TTF_LIBRARIES}
     imageutils
@@ -53,6 +58,9 @@ target_link_libraries(${PROJECT_NAME}
     avutil
     swscale
     swresample
+    rga
+    drm
+    rockchip_mpp
     ${LIBRKNNRT}
     lzma
     m

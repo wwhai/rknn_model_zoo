@@ -22,6 +22,9 @@ gcc ./rtsp-sdl-demo.c \
 -lswresample \
 -lswscale \
 -lavutil \
+-lrga \
+-ldrm \
+-lrockchip_mpp \
 -lpthread \
 -lm \
 -lz \
