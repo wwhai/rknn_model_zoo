@@ -15,15 +15,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifdef _WIN32
-#define SDL_MAIN_HANDLED
-#endif
+// #ifdef _WIN32
+// #define SDL_MAIN_HANDLED
+// #endif
 #include <stdio.h>
 #include "player.c"
 
 int main()
 {
        TPlayer *p = NewTPlayer();
+       TPlayerInit(p);
        StartTPlayer(p);
        while (1)
        {

@@ -102,33 +102,17 @@ int InitTLibSDL2Env(TLibSDL2Env *Env, int w, int h)
     }
     return 0;
 }
-void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, Queue *queue)
+void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, AVFrame *DisplayFrame)
 {
     SDL_Event e;
     int running = 1;
-    int mouse_x = 0, mouse_y = 0;
-    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-    QueueData oqd;
     while (running)
     {
 
         //------------------------------------------------------------------------------------------
         SDL_RenderClear(Env->mainRenderer);
         SDL_SetRenderDrawColor(Env->mainRenderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        if (!isQueueEmpty(queue))
-        {
-            for (size_t i = 0; i < queueSize(queue); i++)
-            {
-                pthread_mutex_lock(&lock);
-                QueueData nqd = dequeue(queue);
-                pthread_mutex_unlock(&lock);
-                oqd.frame = nqd.frame;
-            }
-        }
-        if (oqd.frame != NULL)
-        {
-            TLibSDL2EnvDisplayFrame(Env, oqd.frame);
-        }
+
         SDL_RenderPresent(Env->mainRenderer);
         //------------------------------------------------------------------------------------------
 
@@ -137,12 +121,6 @@ void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, Queue *queue)
             if (e.type == SDL_QUIT)
             {
                 running = 0;
-            }
-            else if (e.type == SDL_MOUSEMOTION)
-            {
-                mouse_x = e.motion.x;
-                mouse_y = e.motion.y;
-                // printf("SDL_MOUSEMOTION: %d,%d\n", mouse_x, mouse_y);
             }
             else if (e.type == SDL_KEYDOWN)
             {

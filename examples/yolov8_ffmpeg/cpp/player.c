@@ -47,6 +47,11 @@ int TPlayerInit(TPlayer *player)
     {
         return ret;
     }
+    ret = TLibAVEnvInitAvFrame(player->AvEnv);
+    if (ret < 0)
+    {
+        return ret;
+    }
     ret = TLibAVEnvInitSWS(player->AvEnv);
     if (ret < 0)
     {
@@ -74,7 +79,7 @@ void *LibAvThreadCallback(void *data)
 void *Sdl2ThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
-    TLibSDL2EnvEventLoop(player->Sdl2Env, player->queue);
+    TLibSDL2EnvEventLoop(player->Sdl2Env, player->AvEnv->OneFrame);
     pthread_exit(NULL);
 }
 

@@ -72,18 +72,7 @@ TLibAVEnv *NewTLibAVEnv()
     Env->outputVideoStream = NULL;
     return Env;
 }
-int TLibAVEnvInitModel(TLibAVEnv *Env)
-{
-    init_post_process();
-    int ret = init_yolov8_model("./model/yolov8n.rknn", &Env->rknnCtx);
-    if (ret != 0)
-    {
-        printf("init_yolov8_model fail!\n");
-        return -1;
-    }
-    memset(&Env->yolo8Image, 0, sizeof(image_buffer_t));
-    return 1;
-}
+
 int TLibAVEnvInitAvFrame(TLibAVEnv *Env)
 {
     int ret;
@@ -111,6 +100,20 @@ int TLibAVEnvInitAvFrame(TLibAVEnv *Env)
     }
     return 0;
 }
+
+int TLibAVEnvInitModel(TLibAVEnv *Env)
+{
+    init_post_process();
+    memset(&Env->yolo8Image, 0, sizeof(image_buffer_t));
+    int ret = init_yolov8_model("./model/yolov8n.rknn", &Env->rknnCtx);
+    if (ret != 0)
+    {
+        printf("init_yolov8_model fail!\n");
+        return -1;
+    }
+    return 1;
+}
+
 int TLibAVEnvInitCodec(TLibAVEnv *Env, const char *inputUrl, const char *outputUrl)
 {
     int ret;
