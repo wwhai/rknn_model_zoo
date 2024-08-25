@@ -394,7 +394,7 @@ void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
     src_image.height = 640;
     src_image.width_stride = 0;
     src_image.height_stride = 0;
-    src_image.format = IMAGE_FORMAT_RGBA8888;
+    src_image.format = IMAGE_FORMAT_RGB888;
     src_image.virt_addr = (unsigned char *)Env->yoloFrame->data;
     object_detect_result_list od_results;
     int ret = inference_yolov8_model(&Env->rknnCtx, &src_image, &od_results);
