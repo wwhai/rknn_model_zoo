@@ -40,9 +40,12 @@ TPlayer *NewTPlayer()
 int TPlayerInit(TPlayer *player)
 {
     int ret = -1;
-    ret = TLibAVEnvInitCodec(player->AvEnv,
-                             "rtsp://192.168.10.244:554/av0_0",
-                             "rtmp://192.168.10.163:1935/live/test001");
+    ret = TLibAVEnvInitInputCodec(player->AvEnv, "rtsp://192.168.10.244:554/av0_0");
+    if (ret < 0)
+    {
+        return ret;
+    }
+    ret = TLibAVEnvInitOutputCodec(player->AvEnv, "rtmp://192.168.10.163:1935/live/test001");
     if (ret < 0)
     {
         return ret;
@@ -72,14 +75,14 @@ int TPlayerInit(TPlayer *player)
 void *LibAvThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
-    TLibAVEnvLoopReceive(player->AvEnv, player->queue);
+    TLibAVEnvReceiveDisplay(player->AvEnv, player->queue);
     pthread_exit(NULL);
 }
 
 void *Sdl2ThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
-    TLibSDL2EnvEventLoop(player->Sdl2Env, player->AvEnv->OneFrame);
+    TLibSDL2EnvEventLoop(player->Sdl2Env, player->queue);
     pthread_exit(NULL);
 }
 

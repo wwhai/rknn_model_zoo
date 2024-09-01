@@ -46,23 +46,23 @@ TLibSDL2Env *NewLibSdl2Env()
         printf("SDL_Init Error: %s\n", TTF_GetError());
         return NULL;
     }
-    if (TTF_Init() != 0)
-    {
-        printf("TTF_Init Error: %s\n", TTF_GetError());
-        SDL_Quit();
-        return NULL;
-    }
+    // if (TTF_Init() != 0)
+    // {
+    //     printf("TTF_Init Error: %s\n", TTF_GetError());
+    //     SDL_Quit();
+    //     return NULL;
+    // }
     TNew(TLibSDL2Env, Sdl2Env);
 
     return Sdl2Env;
 }
 
-void TLibSDL2EnvDisplayFrame(TLibSDL2Env *Env, AVFrame *sdl_frame)
+void TLibSDL2EnvDisplayFrame(TLibSDL2Env *Env, AVFrame *OneFrame)
 {
     SDL_UpdateYUVTexture(Env->mainTexture, NULL,
-                         sdl_frame->data[0], sdl_frame->linesize[0],
-                         sdl_frame->data[1], sdl_frame->linesize[1],
-                         sdl_frame->data[2], sdl_frame->linesize[2]);
+                         OneFrame->data[0], OneFrame->linesize[0],
+                         OneFrame->data[1], OneFrame->linesize[1],
+                         OneFrame->data[2], OneFrame->linesize[2]);
     SDL_Rect srcRect = {0, 0, 1920, 1080};
     SDL_Rect distRect = {0, 0, 1920, 1080};
     SDL_RenderCopy(Env->mainRenderer, Env->mainTexture, &srcRect, &distRect);
@@ -94,15 +94,18 @@ int InitTLibSDL2Env(TLibSDL2Env *Env, int w, int h)
         printf("SDL_CreateTexture Error: %s\n", TTF_GetError());
         return -1;
     }
-    Env->mainFont = TTF_OpenFont("Duran-Medium.ttf", 24);
-    if (!Env->mainFont)
-    {
-        printf("TTF_OpenFont Error: %s\n", TTF_GetError());
-        return -1;
-    }
+    // Env->mainFont = TTF_OpenFont("Duran-Medium.ttf", 24);
+    // if (!Env->mainFont)
+    // {
+    //     printf("TTF_OpenFont Error: %s\n", TTF_GetError());
+    //     return -1;
+    // }
     return 0;
 }
-void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, AVFrame *DisplayFrame)
+/// @brief 显示
+/// @param Env
+/// @param DisplayFrame
+void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, Queue *Queue)
 {
     SDL_Event e;
     int running = 1;
@@ -111,7 +114,12 @@ void TLibSDL2EnvEventLoop(TLibSDL2Env *Env, AVFrame *DisplayFrame)
 
         //------------------------------------------------------------------------------------------
         SDL_RenderClear(Env->mainRenderer);
-        SDL_SetRenderDrawColor(Env->mainRenderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawColor(Env->mainRenderer, 0, 255, 0, SDL_ALPHA_OPAQUE);
+        while (!isQueueEmpty(Queue))
+        {
+            QueueData data = dequeue(Queue);
+            printf("QueueData data.frame->pkt_size: %d\n", data.frame->width);
+        }
 
         SDL_RenderPresent(Env->mainRenderer);
         //------------------------------------------------------------------------------------------

@@ -72,7 +72,9 @@ TLibAVEnv *NewTLibAVEnv()
     Env->outputVideoStream = NULL;
     return Env;
 }
-
+/// @brief 初始化各种帧
+/// @param Env
+/// @return
 int TLibAVEnvInitAvFrame(TLibAVEnv *Env)
 {
     int ret;
@@ -100,7 +102,9 @@ int TLibAVEnvInitAvFrame(TLibAVEnv *Env)
     }
     return 0;
 }
-
+/// @brief 图片尺寸转换器
+/// @param Env
+/// @return
 int TLibAVEnvInitModel(TLibAVEnv *Env)
 {
     init_post_process();
@@ -113,8 +117,12 @@ int TLibAVEnvInitModel(TLibAVEnv *Env)
     }
     return 1;
 }
-
-int TLibAVEnvInitCodec(TLibAVEnv *Env, const char *inputUrl, const char *outputUrl)
+/// @brief 初始化输入解码器
+/// @param Env
+/// @param inputUrl
+/// @param outputUrl
+/// @return
+int TLibAVEnvInitInputCodec(TLibAVEnv *Env, const char *inputUrl)
 {
     int ret;
     char error_buffer[128];
@@ -211,6 +219,17 @@ int TLibAVEnvInitCodec(TLibAVEnv *Env, const char *inputUrl, const char *outputU
         fprintf(stderr, "avcodec_open2 inputVideoCodecCtx: %s\n", error_buffer);
         return 1;
     }
+
+    return 0;
+}
+/// @brief 推流
+/// @param Env
+/// @param outputUrl
+/// @return
+int TLibAVEnvInitOutputCodec(TLibAVEnv *Env, const char *outputUrl)
+{
+    int ret;
+    char error_buffer[128];
     if (ret = avformat_alloc_output_context2(&Env->outputFmtCtx, NULL, "flv", outputUrl) < 0)
     {
         av_strerror(ret, error_buffer, sizeof(error_buffer));
@@ -277,10 +296,11 @@ int TLibAVEnvInitCodec(TLibAVEnv *Env, const char *inputUrl, const char *outputU
         fprintf(stderr, "avformat_write_header outputFmtCtx: %s\n", error_buffer);
         return 1;
     }
-
-    return 0;
+    return 1;
 }
-
+/// @brief 尺寸变换
+/// @param Env
+/// @return
 int TLibAVEnvInitSWS(TLibAVEnv *Env)
 {
     Env->swsCtx = sws_getContext(
@@ -295,8 +315,48 @@ int TLibAVEnvInitSWS(TLibAVEnv *Env)
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
     return 1;
 }
+/// @brief 显示帧
+/// @param Env
+/// @param queue
+void TLibAVEnvReceiveDisplay(TLibAVEnv *Env, Queue *queue)
+{
 
-void TLibAVEnvLoopReceive(TLibAVEnv *Env, Queue *queue)
+    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+    int ret = 0;
+    char error_buffer[128];
+    while (av_read_frame(Env->inputFmtCtx, Env->OnePacket) >= 0)
+    {
+        printf("av_read_frame: %d\n", Env->OnePacket->size);
+        if (Env->OnePacket->stream_index == Env->audioInstreamIndex)
+        {
+            continue;
+        }
+        if (Env->OnePacket->stream_index == Env->videoInstreamIndex)
+        {
+            if (avcodec_send_packet(Env->inputVideoCodecCtx, Env->OnePacket) < 0)
+            {
+                fprintf(stderr, "Error sending packet to decoder\n");
+                av_packet_unref(Env->OnePacket);
+                continue;
+            }
+            while (avcodec_receive_frame(Env->inputVideoCodecCtx, Env->OneFrame) >= 0)
+            {
+                // 解码帧,发送到Queue
+                pthread_mutex_lock(&lock);
+                QueueData qd;
+                qd.frame = Env->OneFrame;
+                enqueue(queue, qd);
+                pthread_mutex_unlock(&lock);
+            }
+        }
+        av_packet_unref(Env->OnePacket);
+    }
+}
+/// @brief 推流
+/// @param Env
+/// @param queue
+void TLibAVEnvLoopReceivePushRtmp(TLibAVEnv *Env, Queue *queue)
 {
 
     pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -356,6 +416,8 @@ void TLibAVEnvLoopReceive(TLibAVEnv *Env, Queue *queue)
         av_packet_unref(Env->OnePacket);
     }
 }
+/// @brief s释放资源
+/// @param Env
 void DestroyTLibAVEnv(TLibAVEnv *Env)
 {
     av_frame_free(&Env->OneFrame);
