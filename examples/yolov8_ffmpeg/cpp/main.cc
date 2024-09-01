@@ -33,9 +33,10 @@ int main()
               if (inputChar == 'q' || inputChar == 'Q')
               {
                      printf("Exiting.\n");
-                     exit(0);
+                     goto END;
               }
        }
+END:
        StopTPlayer(p);
        return 0;
 }

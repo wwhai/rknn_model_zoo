@@ -36,9 +36,6 @@ add_executable(${PROJECT_NAME}
     ${rknpu_yolov8_file}
 )
 
-set(SDL2_LIBRARIES /usr/lib/aarch64-linux-gnu/libSDL2.so)
-set(SDL2_TTF_LIBRARIES /usr/lib/aarch64-linux-gnu/libSDL2_ttf.so)
-
 include_directories(/usr/include/aarch64-linux-gnu)
 link_directories(/usr/lib/aarch64-linux-gnu)
 
@@ -48,8 +45,6 @@ include_directories(${DRM_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME}
     ${DRM_LIBRARIES}
-    ${SDL2_LIBRARIES}
-    ${SDL2_TTF_LIBRARIES}
     imageutils
     fileutils
     imagedrawing

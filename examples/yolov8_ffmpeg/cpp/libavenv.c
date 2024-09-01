@@ -55,6 +55,8 @@ typedef struct TLibAVEnv
     struct SwsContext *swsCtx;
 
 } TLibAVEnv;
+void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env);
+
 TLibAVEnv *NewTLibAVEnv()
 {
     av_log_set_level(AV_LOG_ERROR);
@@ -342,12 +344,7 @@ void TLibAVEnvReceiveDisplay(TLibAVEnv *Env, Queue *queue)
             }
             while (avcodec_receive_frame(Env->inputVideoCodecCtx, Env->OneFrame) >= 0)
             {
-                // 解码帧,发送到Queue
-                pthread_mutex_lock(&lock);
-                QueueData qd;
-                qd.frame = Env->OneFrame;
-                enqueue(queue, qd);
-                pthread_mutex_unlock(&lock);
+                TLibAVEnvRunYoloV8Model(Env);
             }
         }
         av_packet_unref(Env->OnePacket);
@@ -454,23 +451,21 @@ void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
     src_image.size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1);
     src_image.width = 640;
     src_image.height = 640;
-    src_image.width_stride = 0;
-    src_image.height_stride = 0;
     src_image.format = IMAGE_FORMAT_RGB888;
-    src_image.virt_addr = (unsigned char *)Env->yoloFrame->data;
+    src_image.virt_addr = (unsigned char *)Env->yoloFrame->data[0];
     object_detect_result_list od_results;
     int ret = inference_yolov8_model(&Env->rknnCtx, &src_image, &od_results);
     if (ret != 0)
     {
-        printf("init_yolov8_model fail! ret=%d\n", ret);
+        printf("inference_yolov8_model fail! ret=%d\n", ret);
     }
     else
     {
-        printf("init_yolov8_model success! ret=%d\n", ret);
+        printf("inference_yolov8_model success! ret=%d\n", ret);
         for (int i = 0; i < od_results.count; i++)
         {
             object_detect_result det_result = od_results.results[i];
-            printf("object_detect_result: %s @ (%d %d %d %d) %.3f\n",
+            printf("===== object_detect_result: %s @ (%d %d %d %d) %.3f\n",
                    coco_cls_to_name(det_result.cls_id),
                    det_result.box.left, det_result.box.top,
                    det_result.box.right, det_result.box.bottom,
