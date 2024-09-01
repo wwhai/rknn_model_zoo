@@ -329,7 +329,7 @@ void TLibAVEnvReceiveDisplay(TLibAVEnv *Env, Queue *queue)
     char error_buffer[128];
     while (av_read_frame(Env->inputFmtCtx, Env->OnePacket) >= 0)
     {
-        printf("av_read_frame: %d\n", Env->OnePacket->size);
+        // printf("av_read_frame: %d\n", Env->OnePacket->size);
         if (Env->OnePacket->stream_index == Env->audioInstreamIndex)
         {
             continue;
@@ -457,11 +457,11 @@ void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
     int ret = inference_yolov8_model(&Env->rknnCtx, &src_image, &od_results);
     if (ret != 0)
     {
-        printf("inference_yolov8_model fail! ret=%d\n", ret);
+        printf("===== inference_yolov8_model fail! ret=%d\n", ret);
     }
     else
     {
-        printf("inference_yolov8_model success! ret=%d\n", ret);
+        printf("===== inference_yolov8_model success! ret=%d\n", ret);
         for (int i = 0; i < od_results.count; i++)
         {
             object_detect_result det_result = od_results.results[i];
