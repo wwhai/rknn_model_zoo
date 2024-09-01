@@ -444,6 +444,7 @@ void DestroyTLibAVEnv(TLibAVEnv *Env)
 // 执行模型
 void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
 {
+    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
     sws_scale(Env->swsCtx, (const uint8_t *const *)Env->OneFrame->data,
               Env->OneFrame->linesize, 0, Env->OneFrame->height,
               Env->yoloFrame->data, Env->yoloFrame->linesize);
@@ -457,20 +458,21 @@ void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
     int ret = inference_yolov8_model(&Env->rknnCtx, &src_image, &od_results);
     if (ret != 0)
     {
-        printf("===== inference_yolov8_model fail! ret=%d\n", ret);
+        printf("xxxxxxxx inference_yolov8_model fail! ret=%d\n", ret);
     }
     else
     {
-        printf("===== inference_yolov8_model success! ret=%d\n", ret);
+        printf("vvvvvvvv inference_yolov8_model success! ret=%d\n", ret);
         for (int i = 0; i < od_results.count; i++)
         {
             object_detect_result det_result = od_results.results[i];
-            printf("===== object_detect_result: %s @ (%d %d %d %d) %.3f\n",
+            printf("******** object_detect_result: %s @ (%d %d %d %d) %.3f\n",
                    coco_cls_to_name(det_result.cls_id),
                    det_result.box.left, det_result.box.top,
                    det_result.box.right, det_result.box.bottom,
                    det_result.prop);
         }
     }
+    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
 }
 #endif
