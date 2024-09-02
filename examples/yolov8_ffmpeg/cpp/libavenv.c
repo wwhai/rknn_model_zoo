@@ -321,9 +321,15 @@ int TLibAVEnvInitSWS(TLibAVEnv *Env)
 void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
 {
     printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
-    sws_scale(Env->swsCtx, (const uint8_t *const *)Env->OneFrame->data,
-              Env->OneFrame->linesize, 0, Env->OneFrame->height,
-              Env->yoloFrame->data, Env->yoloFrame->linesize);
+    int h = sws_scale(Env->swsCtx, (const uint8_t *const *)Env->OneFrame->data,
+                      Env->OneFrame->linesize, 0, Env->OneFrame->height,
+                      Env->yoloFrame->data, Env->yoloFrame->linesize);
+    if (h <= 0)
+    {
+        printf("xxxxxxxx sws_scale fail! h=%d\n", h);
+        return;
+    }
+
     image_buffer_t src_image;
     src_image.size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1);
     src_image.width = 640;
