@@ -317,6 +317,40 @@ int TLibAVEnvInitSWS(TLibAVEnv *Env)
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
     return 1;
 }
+// 执行模型
+void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
+{
+    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
+    sws_scale(Env->swsCtx, (const uint8_t *const *)Env->OneFrame->data,
+              Env->OneFrame->linesize, 0, Env->OneFrame->height,
+              Env->yoloFrame->data, Env->yoloFrame->linesize);
+    image_buffer_t src_image;
+    src_image.size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1);
+    src_image.width = 640;
+    src_image.height = 640;
+    src_image.format = IMAGE_FORMAT_RGB888;
+    src_image.virt_addr = (unsigned char *)Env->yoloFrame->data[0];
+    object_detect_result_list od_results;
+    int ret = inference_yolov8_model(&Env->rknnCtx, &src_image, &od_results);
+    if (ret != 0)
+    {
+        printf("xxxxxxxx inference_yolov8_model fail! ret=%d\n", ret);
+    }
+    else
+    {
+        printf("vvvvvvvv inference_yolov8_model results.count=%d\n", od_results.count);
+        for (int i = 0; i < od_results.count; i++)
+        {
+            object_detect_result det_result = od_results.results[i];
+            printf("******** object_detect_result: %s @ (x=%d, y=%d, w=%d, h=%d) %.3f\n",
+                   coco_cls_to_name(det_result.cls_id),
+                   det_result.box.left, det_result.box.top,
+                   det_result.box.right, det_result.box.bottom,
+                   det_result.prop);
+        }
+    }
+    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
+}
 /// @brief 显示帧
 /// @param Env
 /// @param queue
@@ -441,38 +475,5 @@ void DestroyTLibAVEnv(TLibAVEnv *Env)
         free(Env->yolo8Image.virt_addr);
     }
 }
-// 执行模型
-void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
-{
-    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
-    sws_scale(Env->swsCtx, (const uint8_t *const *)Env->OneFrame->data,
-              Env->OneFrame->linesize, 0, Env->OneFrame->height,
-              Env->yoloFrame->data, Env->yoloFrame->linesize);
-    image_buffer_t src_image;
-    src_image.size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, 640, 640, 1);
-    src_image.width = 640;
-    src_image.height = 640;
-    src_image.format = IMAGE_FORMAT_RGB888;
-    src_image.virt_addr = (unsigned char *)Env->yoloFrame->data[0];
-    object_detect_result_list od_results;
-    int ret = inference_yolov8_model(&Env->rknnCtx, &src_image, &od_results);
-    if (ret != 0)
-    {
-        printf("xxxxxxxx inference_yolov8_model fail! ret=%d\n", ret);
-    }
-    else
-    {
-        printf("vvvvvvvv inference_yolov8_model results.count=%d\n", od_results.count);
-        for (int i = 0; i < od_results.count; i++)
-        {
-            object_detect_result det_result = od_results.results[i];
-            printf("******** object_detect_result: %s @ (x=%d, y=%d, w=%d, h=%d) %.3f\n",
-                   coco_cls_to_name(det_result.cls_id),
-                   det_result.box.left, det_result.box.top,
-                   det_result.box.right, det_result.box.bottom,
-                   det_result.prop);
-        }
-    }
-    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
-}
+
 #endif
