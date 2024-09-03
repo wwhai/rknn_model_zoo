@@ -16,8 +16,12 @@
  */
 #ifndef TYPES
 #define TYPES
+#include <pthread.h>
 
 #define TNew(_T_, _V_) _T_ *_V_ = (_T_ *)malloc(sizeof(_T_));
+
+pthread_mutex_t thread_mutex;
+pthread_cond_t queue_not_empty;
 
 typedef unsigned char TBool;
 

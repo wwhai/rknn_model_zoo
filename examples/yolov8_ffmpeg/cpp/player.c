@@ -30,10 +30,15 @@ typedef struct
 TPlayer *NewTPlayer()
 {
     TNew(TPlayer, player);
+    pthread_mutex_init(&thread_mutex, NULL);
+    pthread_cond_init(&queue_not_empty, NULL);
     player->AvEnv = NewTLibAVEnv();
-    player->queue = NewQueue();
+    player->queue = CreateQueue(100);
     return player;
 }
+/// @brief 初始化
+/// @param player
+/// @return
 int TPlayerInit(TPlayer *player)
 {
     int ret = -1;
@@ -64,27 +69,67 @@ int TPlayerInit(TPlayer *player)
     }
     return 1;
 }
+/// @brief 线程函数
+/// @param data
+/// @return
+void *LibSdlThreadCallback(void *data)
+{
+    TPlayer *player = (TPlayer *)data;
+    char stringbuf[100];
+    while (1)
+    {
+        pthread_mutex_lock(&thread_mutex); // 加锁
+        if (!isEmpty(player->queue))
+        {
+            QueueData data = dequeue(player->queue);
+            if (data.frame != NULL)
+            {
+                sprintf(stringbuf, "Frame: %p, X: %d, Y: %d, Width: %d, Height: %d, Label: %s:%2f",
+                        data.frame, data.x, data.y, data.w, data.h, data.label, data.prop);
+                printf("@@@@@@@@@@ LibSdlThreadCallback object detect result: %s\n", stringbuf);
+            }
+        }
+        pthread_mutex_unlock(&thread_mutex); // 解锁
+    }
+    pthread_exit(NULL);
+}
+/// @brief 线程函数
+/// @param data
+/// @return
 void *LibAvThreadCallback(void *data)
 {
     TPlayer *player = (TPlayer *)data;
     TLibAVEnvReceiveDisplay(player->AvEnv, player->queue);
     pthread_exit(NULL);
 }
-
+/// @brief 启动线程
+/// @param player
 void StartTPlayer(TPlayer *player)
 {
     void *ret_val;
+    //
     pthread_t LibAvThread;
-
+    pthread_t LibSdlThread;
+    //
     pthread_create(&LibAvThread, NULL, &LibAvThreadCallback, (void *)player);
-    pthread_join(LibAvThread, &ret_val);
+    pthread_create(&LibSdlThread, NULL, &LibSdlThreadCallback, (void *)player);
+    // //
+    pthread_detach(LibAvThread);
+    pthread_detach(LibSdlThread);
 }
-
+/// @brief 停止
+/// @param player
 void StopTPlayer(TPlayer *player)
 {
     if (player->AvEnv)
     {
         DestroyTLibAVEnv(player->AvEnv);
     }
+    if (player->queue != NULL)
+    {
+        freeQueue(player->queue);
+    }
+    pthread_mutex_destroy(&thread_mutex);
+    pthread_cond_destroy(&queue_not_empty);
 }
 #endif

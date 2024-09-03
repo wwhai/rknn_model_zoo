@@ -32,7 +32,7 @@ extern "C"
 #include "image_utils.h"
 #include "file_utils.h"
 #include "image_drawing.h"
-
+#include "types.c"
 #include "queue.c"
 typedef struct TLibAVEnv
 {
@@ -317,16 +317,15 @@ int TLibAVEnvInitSWS(TLibAVEnv *Env)
                          rgb_buffer, AV_PIX_FMT_RGB24, 640, 640, 1);
     return 1;
 }
+
 // 执行模型
-void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
+void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env, Queue *queue)
 {
-    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
     int h = sws_scale(Env->swsCtx, (const uint8_t *const *)Env->OneFrame->data,
                       Env->OneFrame->linesize, 0, Env->OneFrame->height,
                       Env->yoloFrame->data, Env->yoloFrame->linesize);
     if (h <= 0)
     {
-        printf("xxxxxxxx sws_scale fail! h=%d\n", h);
         return;
     }
 
@@ -341,21 +340,24 @@ void TLibAVEnvRunYoloV8Model(TLibAVEnv *Env)
     if (ret != 0)
     {
         printf("xxxxxxxx inference_yolov8_model fail! ret=%d\n", ret);
+        return;
     }
-    else
+
+    printf("vvvvvvvv inference_yolov8_model results.count=%d\n", od_results.count);
+    for (int i = 0; i < od_results.count; i++)
     {
-        printf("vvvvvvvv inference_yolov8_model results.count=%d\n", od_results.count);
-        for (int i = 0; i < od_results.count; i++)
-        {
-            object_detect_result det_result = od_results.results[i];
-            printf("******** object_detect_result: %s @ (x=%d, y=%d, w=%d, h=%d) %.3f\n",
-                   coco_cls_to_name(det_result.cls_id),
-                   det_result.box.left, det_result.box.top,
-                   det_result.box.right, det_result.box.bottom,
-                   det_result.prop);
-        }
+        object_detect_result det_result = od_results.results[i];
+        int x1 = det_result.box.left * (1920 / 640);
+        int y1 = det_result.box.top * (1920 / 640);
+        int x2 = det_result.box.right * (1920 / 640);
+        int y2 = det_result.box.bottom * (1920 / 640);
+        float prop = det_result.prop;
+        QueueData data = {Env->OneFrame, x1, y1, x2, y2, prop, "unknown"};
+        sprintf(data.label, "%s", coco_cls_to_name(det_result.cls_id));
+        pthread_mutex_lock(&thread_mutex);
+        enqueue(queue, data);
+        pthread_mutex_unlock(&thread_mutex);
     }
-    printf(">>>>>>>> TLibAVEnvRunYoloV8Model\n");
 }
 /// @brief 显示帧
 /// @param Env
@@ -369,7 +371,6 @@ void TLibAVEnvReceiveDisplay(TLibAVEnv *Env, Queue *queue)
     char error_buffer[128];
     while (av_read_frame(Env->inputFmtCtx, Env->OnePacket) >= 0)
     {
-        // printf("av_read_frame: %d\n", Env->OnePacket->size);
         if (Env->OnePacket->stream_index == Env->audioInstreamIndex)
         {
             continue;
@@ -384,7 +385,7 @@ void TLibAVEnvReceiveDisplay(TLibAVEnv *Env, Queue *queue)
             }
             while (avcodec_receive_frame(Env->inputVideoCodecCtx, Env->OneFrame) >= 0)
             {
-                TLibAVEnvRunYoloV8Model(Env);
+                TLibAVEnvRunYoloV8Model(Env, queue);
             }
         }
         av_packet_unref(Env->OnePacket);

@@ -20,132 +20,98 @@
 extern "C"
 {
 #include <libavformat/avformat.h>
+#include <libavutil/frame.h>
 }
-
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef struct
 {
     AVFrame *frame;
+    int x, y, w, h;
+    float prop;
+    char label[20];
 } QueueData;
 
-// Forward declare the QueueNode struct
-typedef struct QueueNode
+typedef struct Queue
 {
-    QueueData data;
-    struct QueueNode *next;
-} QueueNode;
-
-typedef struct
-{
-    QueueNode *front;
-    QueueNode *rear;
+    QueueData *array;
+    int capacity;
+    int front;
+    int rear;
     int size;
 } Queue;
 
-// Function to create a new queue
-Queue *NewQueue()
+Queue *CreateQueue(int capacity)
 {
-    Queue *q = (Queue *)malloc(sizeof(Queue));
-    if (q == NULL)
-    {
-        fprintf(stderr, "Failed to allocate memory for queue\n");
-        return NULL;
-    }
-    q->front = NULL;
-    q->rear = NULL;
-    q->size = 0;
-    return q;
+    Queue *queue = (Queue *)malloc(sizeof(Queue));
+    queue->capacity = capacity;
+    queue->front = queue->size = 0;
+    queue->rear = capacity - 1;
+    queue->array = (QueueData *)malloc(queue->capacity * sizeof(QueueData));
+    return queue;
 }
 
-// Function to create a new queue node
-QueueNode *createQueueNode(QueueData data)
+int isFull(Queue *queue)
 {
-    QueueNode *node = (QueueNode *)malloc(sizeof(QueueNode));
-    if (node == NULL)
-    {
-        fprintf(stderr, "Failed to allocate memory for queue node\n");
-        return NULL;
-    }
-    node->data = data;
-    node->next = NULL;
-    return node;
+    return (queue->size == queue->capacity);
 }
 
-// Function to enqueue data into the queue
-void enqueue(Queue *q, QueueData data)
+int isEmpty(Queue *queue)
 {
-    QueueNode *node = createQueueNode(data);
-    if (node == NULL)
-    {
+    return (queue->size == 0);
+}
+
+void enqueue(Queue *queue, QueueData item)
+{
+    if (isFull(queue))
         return;
-    }
-
-    if (q->rear == NULL)
-    {
-        // Queue is empty
-        q->front = q->rear = node;
-    }
-    else
-    {
-        // Add the new node at the end of the queue and update the rear
-        q->rear->next = node;
-        q->rear = node;
-    }
-    q->size++;
+    queue->rear = (queue->rear + 1) % queue->capacity;
+    queue->array[queue->rear] = item;
+    queue->size = queue->size + 1;
 }
 
-// Function to dequeue data from the queue
-QueueData dequeue(Queue *q)
+QueueData dequeue(Queue *queue)
 {
-    QueueData data = {NULL};
-
-    if (q->front == NULL)
-    {
-        fprintf(stderr, "Queue underflow\n");
-        return data;
-    }
-
-    QueueNode *temp = q->front;
-    data = temp->data;
-    q->front = q->front->next;
-
-    if (q->front == NULL)
-    {
-        q->rear = NULL;
-    }
-
-    free(temp);
-    q->size--;
-    return data;
+    if (isEmpty(queue))
+        return (QueueData){NULL, 0, 0, 0, 0, 0.0, ""};
+    QueueData item = queue->array[queue->front];
+    queue->front = (queue->front + 1) % queue->capacity;
+    queue->size = queue->size - 1;
+    return item;
 }
 
-// Function to check if the queue is empty
-int isQueueEmpty(Queue *q)
+void freeQueue(Queue *queue)
 {
-    return q->front == NULL;
-}
-
-// Function to get the size of the queue
-int queueSize(Queue *q)
-{
-    return q->size;
-}
-
-// Function to clear the queue and free memory
-void clearQueue(Queue *q)
-{
-    while (!isQueueEmpty(q))
+    if (queue)
     {
-        QueueData data = dequeue(q);
-        // If using AVFrame, make sure to free the frame
-        if (data.frame)
-        {
-            av_frame_free(&data.frame);
-        }
+        free(queue->array);
+        free(queue);
     }
-    free(q);
 }
 
 #endif
+// 示例用法
+// int main() {
+//     Queue *queue = CreateQueue(10);
+
+//     // 创建一个AVFrame（通常是从解码器获得的）
+//     AVFrame *frame = av_frame_alloc();
+//     // ... 设置frame的属性 ...
+
+//     // 创建一个QueueData节点并入队
+//     QueueData data = {frame, 10, 20, 100, 100, "example_label"};
+//     enqueue(queue, data);
+
+//     // 出队
+//     QueueData dequeuedData = dequeue(queue);
+//     // 使用dequeuedData中的数据
+//     // ...
+
+//     // 释放队列和AVFrame
+//     freeQueue(queue);
+//     av_frame_free(&frame);
+
+//     return 0;
+// }
